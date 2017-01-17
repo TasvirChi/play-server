@@ -1,13 +1,13 @@
 
 var cluster = require('cluster');
-var kaltura = require('./lib/KalturaServer');
+var borhan = require('./lib/BorhanServer');
 
-var KalturaProcess = null;
+var BorhanProcess = null;
 
 if (cluster.isMaster) {
-	KalturaProcess = new kaltura.KalturaMainProcess();
+	BorhanProcess = new borhan.BorhanMainProcess();
 }
 else{
-	KalturaProcess = new kaltura.KalturaChildProcess();
+	BorhanProcess = new borhan.BorhanChildProcess();
 }
 

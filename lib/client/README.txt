@@ -1,1 +1,1 @@
-Kaltura node.js API Client Library.
+Borhan node.js API Client Library.

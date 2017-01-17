@@ -5,12 +5,12 @@ var dns = require('dns');
 var util = require('util');
 var http = require('http');
 var colors = require('colors');
-var kalturaAdServer = require('kaltura-ad-server');
+var borhanAdServer = require('borhan-ad-server');
 
 var id3Reader = require('../bin/TsId3Reader.node');
 
-var kaltura = {
-	client: require('../lib/client/KalturaClient')
+var borhan = {
+	client: require('../lib/client/BorhanClient')
 };
 
 
@@ -64,7 +64,7 @@ function printHelp() {
 	console.log('Usage: ' + process.argv[0] + ' ' + process.argv[1] + ' partner-id admin-secret entry-id');
 	console.log('Options:');
 	console.log('\t -h / --help - This help');
-	console.log('\t -s / --server - Kaltura API hostname');
+	console.log('\t -s / --server - Borhan API hostname');
 
 	process.exit(1);
 }
@@ -103,19 +103,19 @@ function parseCommandLineOptions() {
 
 		if (option == '-s' || option == '--server') {
 			if (!argv.length) {
-				console.error('Please specify Kaltura API hostname');
+				console.error('Please specify Borhan API hostname');
 				printHelp();
 			}
 
 			serverHost = argv.shift();
-			console.log('Validating Kaltura API hostname [' + serverHost + ']');
+			console.log('Validating Borhan API hostname [' + serverHost + ']');
 			canStart = false;
 			dns.lookup(serverHost, function(err, address, family) {
 				if (err) {
-					console.error('Invalid Kaltura API hostname [' + serverHost + ']: ' + err);
+					console.error('Invalid Borhan API hostname [' + serverHost + ']: ' + err);
 					printHelp();
 				} else {
-					console.log('Kaltura API hostname [' + serverHost + '] is valid');
+					console.log('Borhan API hostname [' + serverHost + '] is valid');
 					canStart = true;
 					test();
 				}
@@ -158,7 +158,7 @@ function getUserInputs(callback) {
 
 	if (!serverHost) {
 		var defaultServerHost = os.hostname();
-		var question = 'Please specify Kaltura API hostname or leave empty to use "' + defaultServerHost + '"';
+		var question = 'Please specify Borhan API hostname or leave empty to use "' + defaultServerHost + '"';
 		ask(question, function(data) {
 			if (data === '') {
 				serverHost = defaultServerHost;
@@ -170,7 +170,7 @@ function getUserInputs(callback) {
 	}
 }
 
-var KalturaClientLogger = {
+var BorhanClientLogger = {
 	log: function(str) {
 		console.log(str);
 	}
@@ -178,14 +178,14 @@ var KalturaClientLogger = {
 
 function initClient(callback) {
 	console.log('Initializing client');
-	var clientConfig = new kaltura.client.KalturaConfiguration(partnerId);
+	var clientConfig = new borhan.client.BorhanConfiguration(partnerId);
 
 	clientConfig.serviceUrl = 'http://' + serverHost;
 	clientConfig.clientTag = 'play-server-test-' + os.hostname();
-	clientConfig.setLogger(KalturaClientLogger);
+	clientConfig.setLogger(BorhanClientLogger);
 
-	var type = kaltura.client.enums.KalturaSessionType.ADMIN;
-	var client = new kaltura.client.KalturaClient(clientConfig);
+	var type = borhan.client.enums.BorhanSessionType.ADMIN;
+	var client = new borhan.client.BorhanClient(clientConfig);
 	
 	if(typeof callback === 'function'){
     	client.session.start(function(ks) {
@@ -237,7 +237,7 @@ function getUrl(httpUrl, callback) {
 		console.log('Request [' + httpUrl + '] response: ' + response.statusCode);
 		console.log('Request [' + httpUrl + '] response headers: ' + util.inspect(response.headers));
 		
-		if(response.headers['x-kaltura']){
+		if(response.headers['x-borhan']){
 			process.exit(0);
 		}
 		
@@ -268,7 +268,7 @@ function getUrl(httpUrl, callback) {
 }
 
 function handleEntry(client, entry) {
-	if (entry.objectType && entry.objectType == 'KalturaAPIException') {
+	if (entry.objectType && entry.objectType == 'BorhanAPIException') {
 		console.error('liveStream.get: ' + entry.message);
 		process.exit(1);
 	}
@@ -417,7 +417,7 @@ Player.prototype = {
 				if(id3tag.PTS && id3tag.TEXT && id3tag.TEXT.TEXT){
 					var cuePoint = JSON.parse(id3tag.TEXT.TEXT);
 					cuePoint.pts = id3tag.PTS;
-					if(cuePoint.objectType && cuePoint.objectType == 'KalturaSyncPoint'){
+					if(cuePoint.objectType && cuePoint.objectType == 'BorhanSyncPoint'){
 						this.handleSyncPoint(cuePoint, segment);
 					}
 				}
@@ -633,7 +633,7 @@ AdminPlayer.prototype.cuePointsEnabled = function(latency){
 AdminPlayer.prototype.enableCuePoints = function(duration){
 	var This = this;
 	this.client.liveStream.createPeriodicSyncPoints(function(err){
-		if (err && err.objectType && err.objectType == 'KalturaAPIException') {
+		if (err && err.objectType && err.objectType == 'BorhanAPIException') {
 			console.error('liveStream.createPeriodicSyncPoints: ' + err.message);
 			return;
 		}
@@ -647,7 +647,7 @@ AdminPlayer.prototype.enableCuePoints = function(duration){
 };
 
 AdminPlayer.prototype.createTimeCuePoint = function(sourceUrl, startTime, endTime, callback){
-	var cuePoint = new kaltura.client.objects.KalturaAdCuePoint();
+	var cuePoint = new borhan.client.objects.BorhanAdCuePoint();
 	cuePoint.sourceUrl = sourceUrl;
 	cuePoint.startTime = startTime;
 	cuePoint.endTime = endTime;
@@ -656,7 +656,7 @@ AdminPlayer.prototype.createTimeCuePoint = function(sourceUrl, startTime, endTim
 };
 
 AdminPlayer.prototype.createDurationCuePoint = function(sourceUrl, startTime, duration, callback){
-	var cuePoint = new kaltura.client.objects.KalturaAdCuePoint();
+	var cuePoint = new borhan.client.objects.BorhanAdCuePoint();
 	cuePoint.sourceUrl = sourceUrl;
 	cuePoint.startTime = startTime;
 	cuePoint.duration = duration;
@@ -665,7 +665,7 @@ AdminPlayer.prototype.createDurationCuePoint = function(sourceUrl, startTime, du
 };
 
 AdminPlayer.prototype.createDateCuePoint = function(sourceUrl, date, duration, callback){
-	var cuePoint = new kaltura.client.objects.KalturaAdCuePoint();
+	var cuePoint = new borhan.client.objects.BorhanAdCuePoint();
 	cuePoint.sourceUrl = sourceUrl;
 	cuePoint.triggeredAt = date;
 	cuePoint.duration = duration;
@@ -691,7 +691,7 @@ AdminPlayer.prototype.createDateCuePoint = function(sourceUrl, date, duration, c
 AdminPlayer.prototype.createCuePoint = function(cuePoint, callback){
 	cuePoint.entryId = entryId;
 	this.client.cuePoint.add(function(cuePoint){
-		if (cuePoint && cuePoint.objectType && cuePoint.objectType == 'KalturaAPIException') {
+		if (cuePoint && cuePoint.objectType && cuePoint.objectType == 'BorhanAPIException') {
 			console.error('cuePoint.add: ' + cuePoint.message);
 			return;
 		}
@@ -764,7 +764,7 @@ var options = {
 	privileges : null,
 	serviceUrl: 'http://' + serverHost
 };
-adServer = kalturaAdServer.create(options);
+adServer = borhanAdServer.create(options);
 vast = adServer.getProvider('vast');
 
 vast.getOriginal				= vast.get;
